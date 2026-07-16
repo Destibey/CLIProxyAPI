@@ -359,6 +359,12 @@ nonstream-keepalive-interval: 0
 #       X-Custom-Header: "custom-value"
 #     api-key-entries:
 #       - api-key: "sk-or-v1-...b780"
+#       # Or resolve an operator-controlled secret at startup without writing it into config:
+#       # - api-key-ref:
+#       #     path: "/run/secrets/provider.json"
+#       #     field: "OPENAI_API_KEY"
+#       #     # Use env instead of path/field when the secret is provided by the process environment.
+#       #     # env: "OPENROUTER_API_KEY"
 #         proxy-url: "socks5://proxy.example.com:1080" # optional: per-key proxy override
 #         # proxy-url: "direct" # optional: explicit direct connect for this credential
 #       - api-key: "sk-or-v1-...b781" # without proxy-url

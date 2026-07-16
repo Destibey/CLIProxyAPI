@@ -660,10 +660,46 @@ type OpenAICompatibility struct {
 // OpenAICompatibilityAPIKey represents an API key configuration with optional proxy setting.
 type OpenAICompatibilityAPIKey struct {
 	// APIKey is the authentication key for accessing the external API services.
-	APIKey string `yaml:"api-key" json:"api-key"`
+	APIKey string `yaml:"api-key,omitempty" json:"api-key,omitempty"`
+
+	// APIKeyRef identifies an operator-controlled secret resolved only in memory.
+	APIKeyRef *APIKeyReference `yaml:"api-key-ref,omitempty" json:"api-key-ref,omitempty"`
 
 	// ProxyURL overrides the global proxy setting for this API key if provided.
 	ProxyURL string `yaml:"proxy-url,omitempty" json:"proxy-url,omitempty"`
+}
+
+// APIKeyReference points to an environment variable or a restricted JSON file field.
+type APIKeyReference struct {
+	Env   string `yaml:"env,omitempty" json:"env,omitempty"`
+	Path  string `yaml:"path,omitempty" json:"path,omitempty"`
+	Field string `yaml:"field,omitempty" json:"field,omitempty"`
+}
+
+// MarshalYAML prevents an in-memory resolved key from being written back to disk.
+func (k OpenAICompatibilityAPIKey) MarshalYAML() (any, error) {
+	type wire struct {
+		APIKeyRef *APIKeyReference `yaml:"api-key-ref,omitempty"`
+		ProxyURL  string           `yaml:"proxy-url,omitempty"`
+		APIKey    string           `yaml:"api-key,omitempty"`
+	}
+	if k.APIKeyRef != nil {
+		return wire{APIKeyRef: k.APIKeyRef, ProxyURL: k.ProxyURL}, nil
+	}
+	return wire{APIKey: k.APIKey, ProxyURL: k.ProxyURL}, nil
+}
+
+// MarshalJSON prevents an in-memory resolved key from being exposed by APIs.
+func (k OpenAICompatibilityAPIKey) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		APIKeyRef *APIKeyReference `json:"api-key-ref,omitempty"`
+		ProxyURL  string           `json:"proxy-url,omitempty"`
+		APIKey    string           `json:"api-key,omitempty"`
+	}
+	if k.APIKeyRef != nil {
+		return json.Marshal(wire{APIKeyRef: k.APIKeyRef, ProxyURL: k.ProxyURL})
+	}
+	return json.Marshal(wire{APIKey: k.APIKey, ProxyURL: k.ProxyURL})
 }
 
 // OpenAICompatibilityModel represents a model configuration for OpenAI compatibility,
@@ -841,6 +877,9 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 
 	// Sanitize OpenAI compatibility providers: drop entries without base-url
 	cfg.SanitizeOpenAICompatibility()
+	if err := cfg.resolveOpenAICompatibilityAPIKeys(); err != nil {
+		return nil, err
+	}
 
 	// Normalize OAuth provider model exclusion map.
 	cfg.OAuthExcludedModels = NormalizeOAuthExcludedModels(cfg.OAuthExcludedModels)

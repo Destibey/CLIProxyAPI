@@ -90,6 +90,9 @@ func ParseConfigBytes(data []byte) (*Config, error) {
 	cfg.SanitizeClaudeHeaderDefaults()
 	cfg.SanitizeClaudeKeys()
 	cfg.SanitizeOpenAICompatibility()
+	if err := cfg.resolveOpenAICompatibilityAPIKeys(); err != nil {
+		return nil, err
+	}
 	cfg.OAuthExcludedModels = NormalizeOAuthExcludedModels(cfg.OAuthExcludedModels)
 	cfg.SanitizeOAuthModelAlias()
 	cfg.SanitizePayloadRules()
